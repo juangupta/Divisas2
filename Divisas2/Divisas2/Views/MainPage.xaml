@@ -22,19 +22,31 @@
                 </Label>
                 <control:BindablePicker 
                     Title="Seleccione moneda origen..." 
-                    DisplayMemberPath="Code"
+                    DisplayMemberPath="Name"
                     SelectedValuePath="TaxRate" 
                     ItemsSource="{Binding Rates}" 
                     SelectedValue="{Binding Path=SourceRate, Mode=TwoWay}" 
                     HorizontalOptions="FillAndExpand" 
                     VerticalOptions="Center">
                 </control:BindablePicker>
-                <Label 
-                    Text="Modena destino:">
-                </Label>
-                <control:BindablePicker 
+                <StackLayout Orientation="Horizontal">
+                    <Label 
+                        Text="Modena destino:"
+                        VerticalOptions="Center"
+                        HorizontalOptions="StartAndExpand">
+                    </Label>
+                    <Image Source="exchangeicon.png"
+                           HorizontalOptions="End">
+                        <Image.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding ExchangeRatesCommand}">
+                            </TapGestureRecognizer>
+                        </Image.GestureRecognizers>
+                    </Image>
+                </StackLayout>
+                
+                <control:BindablePicker
                     Title="Seleccione moneda destino..." 
-                    DisplayMemberPath="Code" 
+                    DisplayMemberPath="Name" 
                     SelectedValuePath="TaxRate" 
                     ItemsSource="{Binding Rates}" 
                     SelectedValue="{Binding Path=TargetRate, Mode=TwoWay}" 
@@ -44,8 +56,8 @@
                 <Button 
                     Command="{Binding ConvertMoneyCommand}" 
                     IsEnabled="{Binding IsEnabled}" 
-                    Text="Convertir" 
-                    BackgroundColor="Navy" 
+                    Text="Convertir"
+                    BackgroundColor="Navy"
                     TextColor="White" 
                     HeightRequest="40" 
                     BorderRadius="20">
