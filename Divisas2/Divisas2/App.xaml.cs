@@ -1,4 +1,7 @@
-﻿using Divisas2.Views;
+﻿using Divisas2.Models;
+using Divisas2.Services;
+using Divisas2.Views;
+using Plugin.Connectivity;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,10 +13,11 @@ namespace Divisas2
 {
     public partial class App : Application
     {
+
+        public DataService dataService;
         public App()
         {
             InitializeComponent();
-
             MainPage = new NavigationPage(new MainPage());
         }
 

@@ -1,10 +1,12 @@
 ﻿
 
 using Divisas2.Models;
+using Divisas2.Services;
 using GalaSoft.MvvmLight.Command;
 using Newtonsoft.Json;
 using Plugin.Connectivity;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Net.Http;
@@ -29,6 +31,9 @@ namespace Divisas2.ViewModels
         private string message;
         private double sourceRate;
         private double targetRate;
+        private DataService dataService;
+        private Preference preference;
+
         #endregion
 
         #region Properties
@@ -119,41 +124,44 @@ namespace Divisas2.ViewModels
         public MainViewModel()
         {
             Rates = new ObservableCollection<Rate>();
+            dataService = new DataService();
             IsEnabled = false;
             GetRates();
+            preference = new Preference();
         }
 
         #endregion
 
-        #region Methods
+        #region exchangeRates = dataService.First<ExchangeRates>(false);
+                
         private async void GetRates()
         {
             IsRunning = true;
             IsEnabled = false;
             if (!CrossConnectivity.Current.IsConnected)
             {
+                LoadRatesOffline();
+                loadPreferences();
+                Message = "La aplicación está trabajando Offline";
                 IsRunning = false;
-                IsEnabled = false;
-                await App.Current.MainPage.DisplayAlert(
-                "Error",
-                "Por favor verifica tu conexión a internet.",
-                "Aceptar"
-                    );
+                IsEnabled = true;
+                return;
+
             }
             var isRechable = await CrossConnectivity.Current.IsRemoteReachable("google.com");
             if (!isRechable)
             {
+                LoadRatesOffline();
+                loadPreferences();
+                Message = "La aplicación está trabajando Offline";
                 IsRunning = false;
-                IsEnabled = false;
-                await App.Current.MainPage.DisplayAlert(
-                "Error",
-                "Por favor verifica tu conexión a internet.",
-                "Aceptar"
-                    );
+                IsEnabled = true;
+                return;
             }
 
             try
             {
+
                 var client = new HttpClient();
                 client.BaseAddress = new Uri("https://openexchangerates.org");
                 var url = "/api/latest.json?app_id=f490efbcd52d48ee98fd62cf33c47b9e";
@@ -168,6 +176,7 @@ namespace Divisas2.ViewModels
 
                 var result = await response.Content.ReadAsStringAsync();
                 exchangeRates = JsonConvert.DeserializeObject<ExchangeRates>(result);
+                //dataService.DeleteAllAndInsert(exchangeRates);
             }
             catch (Exception ex)
             {
@@ -194,6 +203,7 @@ namespace Divisas2.ViewModels
 
                 var result = await response.Content.ReadAsStringAsync();
                 nameRates = JsonConvert.DeserializeObject<NameRates>(result);
+                //dataService.DeleteAllAndInsert(nameRates);
             }
             catch (Exception ex)
             {
@@ -204,6 +214,7 @@ namespace Divisas2.ViewModels
             }
 
             LoadRates();
+            loadPreferences();
             IsRunning = false;
             IsEnabled = true;
         }
@@ -211,6 +222,7 @@ namespace Divisas2.ViewModels
         private void LoadRates()
         {
             Rates.Clear();
+            dataService.DeleteAll(new Rate());
             var type = typeof(Rates);
             var properties = type.GetRuntimeFields();
             var nameType = typeof(NameRates);
@@ -228,10 +240,44 @@ namespace Divisas2.ViewModels
                             Code = code,
                             TaxRate = (double)property.GetValue(exchangeRates.Rates),
                             Name = code + " - " +(string)nameProperty.GetValue(nameRates),
+
+                        });
+                        dataService.Insert(new Rate
+                        {
+                            Code = code,
+                            TaxRate = (double)property.GetValue(exchangeRates.Rates),
+                            Name = code + " - " + (string)nameProperty.GetValue(nameRates),
+
                         });
                     }
 
                 }
+            }
+            
+        }
+
+        private void LoadRatesOffline()
+        {
+            Rates.Clear();
+            List<Rate> rates = new List<Rate>();
+            rates = dataService.Get<Rate>(false);
+
+            for (int i = 0; i < rates.Count; i++)
+            {
+                Rates.Add(rates[i]);
+                //Consultar Preferencias
+                //ConsultarPreferencias(rateList[i]);
+            }
+            
+        }
+
+        private void loadPreferences()
+        {
+            preference = dataService.First<Preference>(false);
+            if (preference != null)
+            {
+                SourceRate = preference.SourceRate;
+                TargetRate = preference.TargetRate;
             }
         }
         #endregion
@@ -263,6 +309,11 @@ namespace Divisas2.ViewModels
             }
 
             decimal amountConverted = Amount / (decimal)SourceRate * (decimal)TargetRate;
+
+           dataService.DeleteAllAndInsert(new Preference {
+                SourceRate = SourceRate,
+                TargetRate = TargetRate,
+            });
 
             Message = string.Format("{0:N2} = {1:N2}", Amount, amountConverted);
         }
